@@ -59,14 +59,14 @@ const Login = () => {
             >
               <span className="text-2xl font-bold text-white">K</span>
             </motion.div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-            <p className="text-gray-600">Sign in to your Kanban account</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">С возвращением!</h1>
+            <p className="text-gray-600">Войдите в свой аккаунт Канбан</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
+                Электронная почта
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -76,7 +76,7 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleChange}
                   className="input-field pl-10"
-                  placeholder="Enter your email"
+                  placeholder="Введите ваш email"
                   required
                 />
               </div>
@@ -84,7 +84,7 @@ const Login = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password
+                Пароль
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -94,7 +94,7 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className="input-field pl-10 pr-10"
-                  placeholder="Enter your password"
+                  placeholder="Введите пароль"
                   required
                 />
                 <button
@@ -117,22 +117,22 @@ const Login = () => {
               {loading ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Signing in...
+                  Входим...
                 </div>
               ) : (
-                'Sign In'
+                'Войти'
               )}
             </motion.button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-gray-600">
-              Don't have an account?{' '}
+              Нет аккаунта?{' '}
               <Link
                 to="/register"
                 className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
               >
-                Sign up here
+                Зарегистрироваться
               </Link>
             </p>
           </div>
