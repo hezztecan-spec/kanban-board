@@ -54,6 +54,12 @@ const BoardView = () => {
     }
 
     try {
+      // Optimistically update UI
+      const sourceColumn = currentBoard.columns.find(col => col.id === source.droppableId);
+      const destColumn = currentBoard.columns.find(col => col.id === destination.droppableId);
+      
+      if (!sourceColumn || !destColumn) return;
+
       await moveCard(id, {
         cardId: draggableId,
         sourceColumnId: source.droppableId,
@@ -63,6 +69,8 @@ const BoardView = () => {
       });
     } catch (error) {
       console.error('Move card error:', error);
+      // Refresh board to revert changes
+      await fetchBoard(id);
     }
   };
 
@@ -135,7 +143,7 @@ const BoardView = () => {
     return { text: `${diffDays} days left`, color: 'text-gray-600' };
   };
 
-  if (!currentBoard) {
+  if (!currentBoard || !currentBoard.columns) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
@@ -269,7 +277,7 @@ const BoardView = () => {
                           snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg' : ''
                         }`}
                       >
-                        {column.cards.map((card, cardIndex) => (
+                        {(column.cards || []).map((card, cardIndex) => (
                           <Draggable key={card.id} draggableId={card.id} index={cardIndex}>
                             {(provided, snapshot) => (
                               <motion.div

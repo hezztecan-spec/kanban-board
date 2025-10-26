@@ -33,7 +33,7 @@ export const BoardProvider = ({ children }) => {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !user.uid) {
       dispatch({ type: 'SET_BOARDS', payload: [] });
       return;
     }
@@ -47,14 +47,25 @@ export const BoardProvider = ({ children }) => {
             id: key,
             ...data[key]
           }))
-          .filter(board => 
-            board.owner === user.uid || 
-            (board.members && board.members.some(m => m.userId === user.uid))
-          );
+          .filter(board => {
+            // Show board if user is owner
+            if (board.owner === user.uid) return true;
+            
+            // Show board if user is in members array
+            if (board.members && Array.isArray(board.members)) {
+              return board.members.some(m => m.userId === user.uid);
+            }
+            
+            return false;
+          });
         dispatch({ type: 'SET_BOARDS', payload: boardsArray });
       } else {
         dispatch({ type: 'SET_BOARDS', payload: [] });
       }
+    }, (error) => {
+      console.error('Firebase read error:', error);
+      toast.error('Failed to load boards. Check Firebase rules!');
+      dispatch({ type: 'SET_BOARDS', payload: [] });
     });
 
     return () => unsubscribe();
@@ -358,8 +369,67 @@ export const BoardProvider = ({ children }) => {
   };
 
   const inviteUser = async (boardId, invitationData) => {
-    toast.info('Invitation feature will be added soon!');
-    return Promise.resolve();
+    try {
+      const { email, role } = invitationData;
+      
+      // Find user by email
+      const usersRef = ref(database, 'users');
+      const snapshot = await get(usersRef);
+      const users = snapshot.val();
+      
+      let foundUserId = null;
+      let foundUserName = null;
+      
+      if (users) {
+        Object.keys(users).forEach(uid => {
+          if (users[uid].email === email) {
+            foundUserId = uid;
+            foundUserName = users[uid].name;
+          }
+        });
+      }
+      
+      if (!foundUserId) {
+        toast.error('User with this email not found. They need to register first!');
+        return;
+      }
+      
+      // Check if user already a member
+      const boardRef = ref(database, `boards/${boardId}`);
+      const boardSnapshot = await get(boardRef);
+      const board = boardSnapshot.val();
+      
+      if (board.members && board.members.some(m => m.userId === foundUserId)) {
+        toast.error('User is already a member of this board!');
+        return;
+      }
+      
+      // Add user to board members
+      const newMember = {
+        userId: foundUserId,
+        name: foundUserName,
+        role: role || 'member',
+        joinedAt: new Date().toISOString()
+      };
+      
+      const updatedMembers = [...(board.members || []), newMember];
+      
+      await update(boardRef, { 
+        members: updatedMembers,
+        updatedAt: new Date().toISOString()
+      });
+      
+      toast.success(`${foundUserName} added to board!`);
+      
+      // Refresh board
+      await fetchBoard(boardId);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Invite user error:', error);
+      toast.error('Failed to add user to board');
+      throw error;
+    }
   };
 
   const value = {

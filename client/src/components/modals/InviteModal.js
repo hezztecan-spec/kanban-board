@@ -42,7 +42,10 @@ const InviteModal = ({ boardId, onClose }) => {
         className="bg-white rounded-xl shadow-xl max-w-md w-full"
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Invite User</h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Add User to Board</h2>
+            <p className="text-sm text-gray-500 mt-1">User must already be registered</p>
+          </div>
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -54,7 +57,7 @@ const InviteModal = ({ boardId, onClose }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address *
+              User Email *
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -64,10 +67,11 @@ const InviteModal = ({ boardId, onClose }) => {
                 value={formData.email}
                 onChange={handleChange}
                 className="input-field pl-10"
-                placeholder="Enter email address"
+                placeholder="Enter registered user's email"
                 required
               />
             </div>
+            <p className="text-xs text-gray-500 mt-1">They need to register first at the login page</p>
           </div>
 
           <div>
@@ -130,7 +134,7 @@ const InviteModal = ({ boardId, onClose }) => {
               disabled={loading || !formData.email.trim()}
               className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Sending...' : 'Send Invitation'}
+              {loading ? 'Adding...' : 'Add to Board'}
             </motion.button>
           </div>
         </form>

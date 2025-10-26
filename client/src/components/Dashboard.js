@@ -165,9 +165,9 @@ const Dashboard = () => {
                   </p>
                 )}
 
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>{board.columns.length} columns</span>
-                  <span>{new Date(board.updatedAt).toLocaleDateString()}</span>
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span>{board.columns?.length || 0} columns</span>
+                  <span>{board.updatedAt ? new Date(board.updatedAt).toLocaleDateString() : 'Just now'}</span>
                 </div>
               </motion.div>
             ))}
