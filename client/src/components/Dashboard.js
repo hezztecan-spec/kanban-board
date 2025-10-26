@@ -134,12 +134,12 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredBoards.map((board, index) => (
               <motion.div
-                key={board._id}
+                key={board.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ scale: 1.02, y: -5 }}
-                onClick={() => navigate(`/board/${board._id}`)}
+                onClick={() => navigate(`/board/${board.id}`)}
                 className="card p-6 cursor-pointer hover:shadow-lg transition-all duration-200 group"
               >
                 <div className="flex items-start justify-between mb-4">

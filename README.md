@@ -4,9 +4,13 @@ A beautiful, modern Kanban board application built with React and Node.js, featu
 
 ## 🎯 Быстрый старт
 
-**Не знаете, с чего начать?** 👉 **[START_HERE.md](./START_HERE.md)**
+### 🔥 Проект на Firebase!
 
-**Хотите выложить на бесплатный сервер?** 👉 **[DEPLOY_NO_GIT.md](./DEPLOY_NO_GIT.md)**
+**Всё очень просто:** 👉 **[FIREBASE_SETUP.md](./FIREBASE_SETUP.md)**
+
+- ✅ Полностью бесплатно
+- ✅ Деплой за 5 минут
+- ✅ Реальное время из коробки
 
 ## Features
 
@@ -45,20 +49,16 @@ A beautiful, modern Kanban board application built with React and Node.js, featu
 - **Axios**: HTTP client
 
 ### Backend
-- **Node.js**: JavaScript runtime
-- **Express.js**: Web framework
-- **MongoDB**: NoSQL database (MongoDB Atlas)
-- **Mongoose**: MongoDB object modeling
-- **JWT**: JSON Web Tokens for authentication
-- **bcryptjs**: Password hashing
-- **Express Validator**: Input validation
-- **CORS**: Cross-origin resource sharing
+- **Firebase**: Complete backend solution
+  - **Firebase Authentication**: User auth
+  - **Firebase Realtime Database**: Real-time data sync
+  - **Firebase Hosting**: Free hosting with CDN
 
 ## Installation
 
 ### Prerequisites
 - Node.js (v16 or higher)
-- MongoDB Atlas account (free tier available)
+- Firebase account (free tier available)
 - npm or yarn
 
 ### Setup Instructions
@@ -74,8 +74,8 @@ cd kanban-board
 npm run install-all
 ```
 
-3. **MongoDB Setup**
-The application is already configured to use MongoDB Atlas cloud database. No local MongoDB installation required!
+3. **Firebase Setup**
+Firebase is already configured! Just enable Authentication and set Database Rules. See [FIREBASE_SETUP.md](./FIREBASE_SETUP.md)
 
 4. **Run the application**
 
@@ -97,45 +97,29 @@ This will start both the backend server (port 5000) and frontend development ser
 .\kill-ports.cmd
 ```
 
-## 🌍 Доступ для удаленных пользователей
+## 🌍 Деплой на Firebase (Рекомендуется!)
 
-### 🚀 Выложить на БЕСПЛАТНЫЙ сервер (Рекомендуется!)
+**5 минут до полностью работающего приложения!**
 
-**Хотите постоянную ссылку для друзей? Выложите на бесплатный хостинг!**
+📖 **Полная инструкция:** [FIREBASE_SETUP.md](./FIREBASE_SETUP.md)
 
-📖 **БЕЗ Git (через веб):** [DEPLOY_NO_GIT.md](./DEPLOY_NO_GIT.md) - **НАЧНИТЕ ЗДЕСЬ!**  
-⚡ **С Git (быстро):** [QUICK_DEPLOY.md](./QUICK_DEPLOY.md)  
-📚 **Подробная инструкция:** [DEPLOY_FREE.md](./DEPLOY_FREE.md)
+**Преимущества Firebase:**
+- ✅ Полностью бесплатно
+- ✅ Автоматическая синхронизация в реальном времени
+- ✅ HTTPS по умолчанию
+- ✅ CDN по всему миру
+- ✅ Не нужен отдельный backend сервер
 
-**Преимущества:**
-- ✅ Работает 24/7
-- ✅ Постоянная ссылка (типа `https://your-app.vercel.app`)
-- ✅ Не нужно держать компьютер включенным
-- ✅ БЕСПЛАТНО!
-
-**Время:** 15-20 минут
-
----
-
-### 💨 Быстрый доступ (временно)
-
-**Вариант 1: Для людей в той же WiFi сети**
-```
-Дайте им ссылку: http://192.168.100.73:3000
-```
-
-**Вариант 2: Через интернет (ngrok - временная ссылка)**
+**Быстрая команда:**
 ```bash
-# Установите ngrok
-npm install -g ngrok
-
-# Запустите скрипт
-start-remote.cmd   # Windows
-# или
-bash start-remote.sh  # Mac/Linux
+npm install -g firebase-tools
+firebase login
+firebase init
+cd client && npm run build && cd ..
+firebase deploy
 ```
 
-📖 Подробности в [REMOTE_ACCESS.md](./REMOTE_ACCESS.md)
+Получите ссылку типа: `https://kanban-board-ae545.web.app` 🔥
 
 ## Usage
 
@@ -241,6 +225,7 @@ bash start-remote.sh  # Mac/Linux
 ```
 
 ### Card Model
+
 ```javascript
 {
   title: String,
@@ -255,20 +240,16 @@ bash start-remote.sh  # Mac/Linux
 
 ## 📚 Документация
 
+- 🔥 **[Firebase Setup](./FIREBASE_SETUP.md)** - Деплой на Firebase
 - 🔧 **[Решение проблем](./TROUBLESHOOTING.md)** - Если что-то не работает
-- 🌍 **[Удаленный доступ](./REMOTE_ACCESS.md)** - Доступ через интернет
-- 🚀 **[Быстрый старт удаленно](./QUICK_START_REMOTE.md)** - 5 минут до доступа
-- 📝 **[Команды деплоя](./DEPLOY_COMMANDS.md)** - Все команды в одном месте
-- 🌐 **[Настройка сети](./NETWORK_SETUP.md)** - Настройка для локальной сети
 
 ## Скрипты
 
 | Скрипт | Описание |
 |--------|----------|
-| `.\start.cmd` | Запуск приложения (автоматически освобождает порты) |
+| `.\start.cmd` | Запуск приложения локально |
 | `.\kill-ports.cmd` | Освободить порты 3000 и 5000 |
-| `.\start-remote.cmd` | Запуск с ngrok для удаленного доступа |
-| `npm run dev` | Запуск в dev режиме |
+| `cd client && npm start` | Запуск только frontend |
 | `npm run install-all` | Установка всех зависимостей |
 
 ## Contributing

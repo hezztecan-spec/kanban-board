@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useReducer } from 'react';
-import { boardsAPI, cardsAPI } from '../services/api';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { ref, set, get, push, update, remove, onValue } from 'firebase/database';
+import { database } from '../firebase';
+import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
 const BoardContext = createContext();
@@ -21,27 +23,6 @@ const boardReducer = (state, action) => {
       return { ...state, boards: action.payload, loading: false };
     case 'SET_CURRENT_BOARD':
       return { ...state, currentBoard: action.payload, loading: false };
-    case 'ADD_BOARD':
-      return { ...state, boards: [action.payload, ...state.boards] };
-    case 'UPDATE_BOARD':
-      return {
-        ...state,
-        boards: state.boards.map(board =>
-          board._id === action.payload._id ? action.payload : board
-        ),
-        currentBoard: state.currentBoard?._id === action.payload._id ? action.payload : state.currentBoard,
-      };
-    case 'DELETE_BOARD':
-      return {
-        ...state,
-        boards: state.boards.filter(board => board._id !== action.payload),
-        currentBoard: state.currentBoard?._id === action.payload ? null : state.currentBoard,
-      };
-    case 'MOVE_CARD':
-      return {
-        ...state,
-        currentBoard: action.payload,
-      };
     default:
       return state;
   }
@@ -49,156 +30,336 @@ const boardReducer = (state, action) => {
 
 export const BoardProvider = ({ children }) => {
   const [state, dispatch] = useReducer(boardReducer, initialState);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) {
+      dispatch({ type: 'SET_BOARDS', payload: [] });
+      return;
+    }
+
+    const boardsRef = ref(database, 'boards');
+    const unsubscribe = onValue(boardsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const boardsArray = Object.keys(data)
+          .map(key => ({
+            id: key,
+            ...data[key]
+          }))
+          .filter(board => 
+            board.owner === user.uid || 
+            (board.members && board.members.some(m => m.userId === user.uid))
+          );
+        dispatch({ type: 'SET_BOARDS', payload: boardsArray });
+      } else {
+        dispatch({ type: 'SET_BOARDS', payload: [] });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const fetchBoards = async () => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await boardsAPI.getBoards();
-      dispatch({ type: 'SET_BOARDS', payload: response.data });
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to fetch boards' });
-      toast.error('Failed to fetch boards');
-    }
+    // Real-time listener handles this
   };
 
   const fetchBoard = async (id) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await boardsAPI.getBoard(id);
-      dispatch({ type: 'SET_CURRENT_BOARD', payload: response.data });
+      const boardRef = ref(database, `boards/${id}`);
+      const snapshot = await get(boardRef);
+      
+      if (snapshot.exists()) {
+        const board = { id, ...snapshot.val() };
+        dispatch({ type: 'SET_CURRENT_BOARD', payload: board });
+      } else {
+        toast.error('Board not found');
+      }
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: error.response?.data?.message || 'Failed to fetch board' });
       toast.error('Failed to fetch board');
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
   const createBoard = async (boardData) => {
     try {
-      const response = await boardsAPI.createBoard(boardData);
-      dispatch({ type: 'ADD_BOARD', payload: response.data });
+      const boardsRef = ref(database, 'boards');
+      const newBoardRef = push(boardsRef);
+      
+      const board = {
+        ...boardData,
+        owner: user.uid,
+        members: [{
+          userId: user.uid,
+          name: user.name,
+          role: 'admin',
+          joinedAt: new Date().toISOString()
+        }],
+        columns: [
+          { id: 'col1', title: 'To Do', position: 0, cards: [] },
+          { id: 'col2', title: 'In Progress', position: 1, cards: [] },
+          { id: 'col3', title: 'Done', position: 2, cards: [] }
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await set(newBoardRef, board);
       toast.success('Board created successfully!');
-      return response.data;
+      return { id: newBoardRef.key, ...board };
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create board');
+      toast.error('Failed to create board');
       throw error;
     }
   };
 
   const updateBoard = async (id, boardData) => {
     try {
-      const response = await boardsAPI.updateBoard(id, boardData);
-      dispatch({ type: 'UPDATE_BOARD', payload: response.data });
+      const boardRef = ref(database, `boards/${id}`);
+      const updates = {
+        ...boardData,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await update(boardRef, updates);
       toast.success('Board updated successfully!');
-      return response.data;
+      
+      // Refresh current board
+      if (state.currentBoard?.id === id) {
+        await fetchBoard(id);
+      }
+      
+      return updates;
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update board');
+      toast.error('Failed to update board');
       throw error;
     }
   };
 
   const deleteBoard = async (id) => {
     try {
-      await boardsAPI.deleteBoard(id);
-      dispatch({ type: 'DELETE_BOARD', payload: id });
+      const boardRef = ref(database, `boards/${id}`);
+      await remove(boardRef);
       toast.success('Board deleted successfully!');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete board');
-      throw error;
-    }
-  };
-
-  const inviteUser = async (boardId, invitationData) => {
-    try {
-      const response = await boardsAPI.inviteUser(boardId, invitationData);
-      toast.success('Invitation sent successfully!');
-      return response.data;
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to send invitation');
+      toast.error('Failed to delete board');
       throw error;
     }
   };
 
   const addCard = async (boardId, columnId, cardData) => {
     try {
-      const response = await cardsAPI.addCard(boardId, columnId, cardData);
-      dispatch({ type: 'SET_CURRENT_BOARD', payload: response.data });
+      const boardRef = ref(database, `boards/${boardId}`);
+      const snapshot = await get(boardRef);
+      const board = snapshot.val();
+
+      const columns = board.columns.map(col => {
+        if (col.id === columnId) {
+          const newCard = {
+            id: `card-${Date.now()}`,
+            ...cardData,
+            position: col.cards?.length || 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          return {
+            ...col,
+            cards: [...(col.cards || []), newCard]
+          };
+        }
+        return col;
+      });
+
+      await update(boardRef, { 
+        columns,
+        updatedAt: new Date().toISOString()
+      });
+      
       toast.success('Card added successfully!');
-      return response.data;
+      await fetchBoard(boardId);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to add card');
+      toast.error('Failed to add card');
       throw error;
     }
   };
 
   const updateCard = async (boardId, columnId, cardId, cardData) => {
     try {
-      const response = await cardsAPI.updateCard(boardId, columnId, cardId, cardData);
-      dispatch({ type: 'SET_CURRENT_BOARD', payload: response.data });
+      const boardRef = ref(database, `boards/${boardId}`);
+      const snapshot = await get(boardRef);
+      const board = snapshot.val();
+
+      const columns = board.columns.map(col => {
+        if (col.id === columnId) {
+          const cards = col.cards.map(card => 
+            card.id === cardId 
+              ? { ...card, ...cardData, updatedAt: new Date().toISOString() }
+              : card
+          );
+          return { ...col, cards };
+        }
+        return col;
+      });
+
+      await update(boardRef, { 
+        columns,
+        updatedAt: new Date().toISOString()
+      });
+      
       toast.success('Card updated successfully!');
-      return response.data;
+      await fetchBoard(boardId);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update card');
+      toast.error('Failed to update card');
       throw error;
     }
   };
 
   const deleteCard = async (boardId, columnId, cardId) => {
     try {
-      const response = await cardsAPI.deleteCard(boardId, columnId, cardId);
-      dispatch({ type: 'SET_CURRENT_BOARD', payload: response.data });
+      const boardRef = ref(database, `boards/${boardId}`);
+      const snapshot = await get(boardRef);
+      const board = snapshot.val();
+
+      const columns = board.columns.map(col => {
+        if (col.id === columnId) {
+          const cards = col.cards.filter(card => card.id !== cardId);
+          return { ...col, cards };
+        }
+        return col;
+      });
+
+      await update(boardRef, { 
+        columns,
+        updatedAt: new Date().toISOString()
+      });
+      
       toast.success('Card deleted successfully!');
-      return response.data;
+      await fetchBoard(boardId);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete card');
+      toast.error('Failed to delete card');
       throw error;
     }
   };
 
   const moveCard = async (boardId, moveData) => {
     try {
-      const response = await cardsAPI.moveCard(boardId, moveData);
-      dispatch({ type: 'MOVE_CARD', payload: response.data });
-      return response.data;
+      const { cardId, sourceColumnId, destinationColumnId, sourceIndex, destinationIndex } = moveData;
+      
+      const boardRef = ref(database, `boards/${boardId}`);
+      const snapshot = await get(boardRef);
+      const board = snapshot.val();
+
+      let movedCard = null;
+      
+      // Remove card from source column
+      const columns = board.columns.map(col => {
+        if (col.id === sourceColumnId) {
+          movedCard = col.cards.find(card => card.id === cardId);
+          const cards = col.cards.filter(card => card.id !== cardId);
+          return { ...col, cards };
+        }
+        return col;
+      });
+
+      // Add card to destination column
+      const finalColumns = columns.map(col => {
+        if (col.id === destinationColumnId) {
+          const cards = [...(col.cards || [])];
+          cards.splice(destinationIndex, 0, movedCard);
+          return { ...col, cards };
+        }
+        return col;
+      });
+
+      await update(boardRef, { 
+        columns: finalColumns,
+        updatedAt: new Date().toISOString()
+      });
+      
+      await fetchBoard(boardId);
+      return { id: boardId, ...board, columns: finalColumns };
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to move card');
+      toast.error('Failed to move card');
       throw error;
     }
   };
 
   const addColumn = async (boardId, columnData) => {
     try {
-      const response = await cardsAPI.addColumn(boardId, columnData);
-      dispatch({ type: 'SET_CURRENT_BOARD', payload: response.data });
+      const boardRef = ref(database, `boards/${boardId}`);
+      const snapshot = await get(boardRef);
+      const board = snapshot.val();
+
+      const newColumn = {
+        id: `col-${Date.now()}`,
+        ...columnData,
+        position: board.columns?.length || 0,
+        cards: []
+      };
+
+      const columns = [...(board.columns || []), newColumn];
+
+      await update(boardRef, { 
+        columns,
+        updatedAt: new Date().toISOString()
+      });
+      
       toast.success('Column added successfully!');
-      return response.data;
+      await fetchBoard(boardId);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to add column');
+      toast.error('Failed to add column');
       throw error;
     }
   };
 
   const updateColumn = async (boardId, columnId, columnData) => {
     try {
-      const response = await cardsAPI.updateColumn(boardId, columnId, columnData);
-      dispatch({ type: 'SET_CURRENT_BOARD', payload: response.data });
+      const boardRef = ref(database, `boards/${boardId}`);
+      const snapshot = await get(boardRef);
+      const board = snapshot.val();
+
+      const columns = board.columns.map(col => 
+        col.id === columnId ? { ...col, ...columnData } : col
+      );
+
+      await update(boardRef, { 
+        columns,
+        updatedAt: new Date().toISOString()
+      });
+      
       toast.success('Column updated successfully!');
-      return response.data;
+      await fetchBoard(boardId);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update column');
+      toast.error('Failed to update column');
       throw error;
     }
   };
 
   const deleteColumn = async (boardId, columnId) => {
     try {
-      const response = await cardsAPI.deleteColumn(boardId, columnId);
-      dispatch({ type: 'SET_CURRENT_BOARD', payload: response.data });
+      const boardRef = ref(database, `boards/${boardId}`);
+      const snapshot = await get(boardRef);
+      const board = snapshot.val();
+
+      const columns = board.columns.filter(col => col.id !== columnId);
+
+      await update(boardRef, { 
+        columns,
+        updatedAt: new Date().toISOString()
+      });
+      
       toast.success('Column deleted successfully!');
-      return response.data;
+      await fetchBoard(boardId);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete column');
+      toast.error('Failed to delete column');
       throw error;
     }
+  };
+
+  const inviteUser = async (boardId, invitationData) => {
+    toast.info('Invitation feature will be added soon!');
+    return Promise.resolve();
   };
 
   const value = {

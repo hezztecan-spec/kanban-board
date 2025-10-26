@@ -206,7 +206,7 @@ const BoardView = () => {
           <div className="flex space-x-6 overflow-x-auto pb-6">
             {currentBoard.columns.map((column, columnIndex) => (
               <motion.div
-                key={column._id}
+                key={column.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: columnIndex * 0.1 }}
@@ -215,7 +215,7 @@ const BoardView = () => {
                 <div className="card p-4 h-full">
                   {/* Column Header */}
                   <div className="flex items-center justify-between mb-4">
-                    {editingColumn === column._id ? (
+                    {editingColumn === column.id ? (
                       <div className="flex items-center space-x-2 flex-1">
                         <input
                           type="text"
@@ -243,13 +243,13 @@ const BoardView = () => {
                         <h3 className="font-semibold text-gray-900">{column.title}</h3>
                         <div className="flex items-center space-x-1">
                           <button
-                            onClick={() => handleEditColumn(column._id, column.title)}
+                            onClick={() => handleEditColumn(column.id, column.title)}
                             className="p-1 text-gray-400 hover:text-gray-600"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteColumn(column._id)}
+                            onClick={() => handleDeleteColumn(column.id)}
                             className="p-1 text-gray-400 hover:text-red-600"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -260,7 +260,7 @@ const BoardView = () => {
                   </div>
 
                   {/* Cards */}
-                  <Droppable droppableId={column._id}>
+                  <Droppable droppableId={column.id}>
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
@@ -270,7 +270,7 @@ const BoardView = () => {
                         }`}
                       >
                         {column.cards.map((card, cardIndex) => (
-                          <Draggable key={card._id} draggableId={card._id} index={cardIndex}>
+                          <Draggable key={card.id} draggableId={card.id} index={cardIndex}>
                             {(provided, snapshot) => (
                               <motion.div
                                 ref={provided.innerRef}
@@ -338,7 +338,7 @@ const BoardView = () => {
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          onClick={() => handleCreateCard(column._id)}
+                          onClick={() => handleCreateCard(column.id)}
                           className="w-full p-3 text-gray-500 hover:text-gray-700 border-2 border-dashed border-gray-300 hover:border-primary-400 rounded-lg transition-colors flex items-center justify-center space-x-2"
                         >
                           <Plus className="w-4 h-4" />

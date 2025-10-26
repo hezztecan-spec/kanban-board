@@ -1,36 +1,30 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  updateProfile 
+} from 'firebase/auth';
+import { ref, set, get } from 'firebase/database';
+import { auth, database } from '../firebase';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
 const initialState = {
   user: null,
-  token: localStorage.getItem('token'),
   isAuthenticated: false,
   loading: true,
 };
 
 const authReducer = (state, action) => {
   switch (action.type) {
-    case 'LOGIN_SUCCESS':
-      localStorage.setItem('token', action.payload.token);
-      localStorage.setItem('user', JSON.stringify(action.payload.user));
+    case 'SET_USER':
       return {
         ...state,
-        user: action.payload.user,
-        token: action.payload.token,
-        isAuthenticated: true,
-        loading: false,
-      };
-    case 'LOGOUT':
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      return {
-        ...state,
-        user: null,
-        token: null,
-        isAuthenticated: false,
+        user: action.payload,
+        isAuthenticated: !!action.payload,
         loading: false,
       };
     case 'SET_LOADING':
@@ -38,11 +32,11 @@ const authReducer = (state, action) => {
         ...state,
         loading: action.payload,
       };
-    case 'SET_USER':
+    case 'LOGOUT':
       return {
         ...state,
-        user: action.payload,
-        isAuthenticated: true,
+        user: null,
+        isAuthenticated: false,
         loading: false,
       };
     default:
@@ -54,61 +48,88 @@ export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    const loadUser = async () => {
-      const token = localStorage.getItem('token');
-      const user = localStorage.getItem('user');
-
-      if (token && user) {
-        try {
-          const response = await authAPI.getMe();
-          dispatch({
-            type: 'SET_USER',
-            payload: response.data.user,
-          });
-        } catch (error) {
-          dispatch({ type: 'LOGOUT' });
-        }
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Get additional user data from database
+        const userRef = ref(database, `users/${firebaseUser.uid}`);
+        const snapshot = await get(userRef);
+        const userData = snapshot.val();
+        
+        dispatch({
+          type: 'SET_USER',
+          payload: {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: userData?.name || firebaseUser.displayName || 'User',
+          },
+        });
       } else {
-        dispatch({ type: 'SET_LOADING', payload: false });
+        dispatch({ type: 'SET_USER', payload: null });
       }
-    };
+    });
 
-    loadUser();
+    return () => unsubscribe();
   }, []);
 
   const login = async (credentials) => {
     try {
-      const response = await authAPI.login(credentials);
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: response.data,
-      });
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        credentials.email, 
+        credentials.password
+      );
       toast.success('Welcome back!');
-      return response.data;
+      return userCredential.user;
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      const errorMessage = error.code === 'auth/invalid-credential' 
+        ? 'Invalid email or password' 
+        : error.message;
+      toast.error(errorMessage);
       throw error;
     }
   };
 
   const register = async (userData) => {
     try {
-      const response = await authAPI.register(userData);
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: response.data,
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        userData.email,
+        userData.password
+      );
+
+      // Update display name
+      await updateProfile(userCredential.user, {
+        displayName: userData.name
       });
+
+      // Save user data to database
+      const userRef = ref(database, `users/${userCredential.user.uid}`);
+      await set(userRef, {
+        name: userData.name,
+        email: userData.email,
+        createdAt: new Date().toISOString(),
+      });
+
       toast.success('Account created successfully!');
-      return response.data;
+      return userCredential.user;
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      const errorMessage = error.code === 'auth/email-already-in-use'
+        ? 'Email already in use'
+        : error.message;
+      toast.error(errorMessage);
       throw error;
     }
   };
 
-  const logout = () => {
-    dispatch({ type: 'LOGOUT' });
-    toast.success('Logged out successfully');
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      dispatch({ type: 'LOGOUT' });
+      toast.success('Logged out successfully');
+    } catch (error) {
+      toast.error('Logout failed');
+      throw error;
+    }
   };
 
   const value = {
